@@ -1,0 +1,12 @@
+{
+  "name": "AWS Test Env",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "postCreateCommand": "./.devcontainer/setup.sh",
+  "features": {
+    "aws-cli": "latest",
+    "terraform": "latest"
+  },
+  "forwardPorts": [],
+  "mounts": [],
+  "postStopCommand": "./.devcontainer/cleanup.sh"
+}
