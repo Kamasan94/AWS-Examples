@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# Exit immediately if any command retursn a non-zero status
+set -e
+
+# Folder to put files
+OUTPUT_DIR="/tmp/s3-bash-scripts"
+
+rm -r $OUTPUT_DIR
+
+# Create the folder
+mkdir -p $OUTPUT_DIR
+
+# generate number of files
+NUM_FILES=$((RANDOM % 6 + 5))
+
+for ((i=1; i<=$NUM_FILES; i++)); do
+    FILENAME="$OUTPUT_DIR/file_$i.txt"
+    dd if=/dev/urandom of="$FILENAME" bs=1024 count=$((RANDOM % 1024 + 1)) 2> /dev/null
+done
+
+tree $OUTPUT_DIR
+
