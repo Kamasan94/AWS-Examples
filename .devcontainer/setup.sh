@@ -12,3 +12,4 @@ terraform init
 terraform apply -auto-approve
 
 echo "✅ Environment ready!"
+

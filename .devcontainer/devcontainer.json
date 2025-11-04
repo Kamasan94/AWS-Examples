@@ -4,9 +4,12 @@
   "postCreateCommand": "./.devcontainer/setup.sh",
   "features": {
     "aws-cli": "latest",
-    "terraform": "latest"
+    "terraform": "latest",
+    "powershell": "latest"
   },
   "forwardPorts": [],
   "mounts": [],
   "postStopCommand": "./.devcontainer/cleanup.sh"
 }
+
+//https://learn.microsoft.com/en-us/powershell/scripting/install/install-ubuntu?view=powershell-7.5
