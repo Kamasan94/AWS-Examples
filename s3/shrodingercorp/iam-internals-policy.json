@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowListBucketInternalPrefix",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::schrodingercorp-content-prod",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": "internal/*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowGetObjectInternal",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::schrodingercorp-content-prod/internal/*"
+    }
+  ]
+}
+
