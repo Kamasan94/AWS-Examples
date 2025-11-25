@@ -1,0 +1,13 @@
+ AWSTemplateFormatVersion: "2010-09-09"
+ Description: Launch a simple EC2 for use with testing VPC
+ Parameters:
+  ImageId: 
+    Default: ami-003c24b59bb839e19
+  SubnetId:
+    Default:
+  Resources:
+    MyEC2Instance:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: !Ref ImageId
+        SubnetId: !Ref SubnetId 

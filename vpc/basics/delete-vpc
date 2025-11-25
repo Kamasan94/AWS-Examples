@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+if  [ -z "$1" ]; then
+    echo "Argument not provided"
+else
+    export VPC_ID = $1
+ 
+# Detach the IGW
+aws ec2 detach-internet-gateway \
+--internet-gateway-id $IGW_ID \
+--vpc-id $VPC_ID
+
+# Delete the IGW
+
+# Dissaco
+
+$RTDB_ID=$(aws ec2 describe-route-tables \
+--filters "Name=association.subnet-id,Values=$SUBNET_ID \
+--query )
+aws ec2 disassociate-route-table --association-id 
+
+# Delete the subnet
+aws ec2 delete-subnet --subnet-id $SUBNET_ID
+
+# Delete route table
+aws ec2 delete-route-table --route-table-id $RT_ID
+
+# Delete the vpc
+aws ec2 delete-vpc --vpc-id $VPC_ID
