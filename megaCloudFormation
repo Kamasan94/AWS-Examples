@@ -1,0 +1,154 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources:
+
+  MySNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: devops-Priority-Queues-Topic
+
+  HPQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: devops-High-Priority-Queue
+
+  LPQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: devops-Low-Priority-Queue
+
+  HPSQSQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref HPQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt HPQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref MySNSTopic
+
+  LPSQSQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref LPQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt LPQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref MySNSTopic
+
+  HPSNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref MySNSTopic
+      Protocol: sqs
+      Endpoint: !GetAtt HPQueue.Arn
+      FilterPolicy:
+        priority:
+          - high
+
+  LPSNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref MySNSTopic
+      Protocol: sqs
+      Endpoint: !GetAtt LPQueue.Arn
+      FilterPolicy:
+        priority:
+          - low
+
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: lambda_execution_role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+      - arn:aws:iam::aws:policy/AmazonSNSFullAccess
+
+  # Trigger per la Coda ad Alta Priorità
+  
+
+  primer:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: devops-priorities-queue-function
+      Runtime: python3.12
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Handler: index.lambda_handler
+      Environment:
+        Variables:
+          high_priority_queue: !Ref HPQueue  # Passa l'URL della coda
+          low_priority_queue: !Ref LPQueue   # Passa l'URL della coda
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          sqs = boto3.client('sqs')
+          def delete_message(queue_url, receipt_handle, message):
+              response = sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
+              return "Message " + "'" + message + "'" + " deleted"
+              
+          def poll_messages(queue_url):
+              QueueUrl=queue_url
+              response = sqs.receive_message(
+                  QueueUrl=QueueUrl,
+                  AttributeNames=[],
+                  MaxNumberOfMessages=1,
+                  MessageAttributeNames=['All'],
+                  WaitTimeSeconds=3
+              )
+              if "Messages" in response:
+                  receipt_handle=response['Messages'][0]['ReceiptHandle']
+                  message = response['Messages'][0]['Body']
+                  delete_response = delete_message(QueueUrl,receipt_handle,message)
+                  return delete_response
+              else:
+                  return "No more messages to poll"
+          def lambda_handler(event, context):
+              response = poll_messages(os.environ['high_priority_queue'])
+              if response == "No more messages to poll":
+                  response = poll_messages(os.environ['low_priority_queue'])
+              return response
+
+  # Regola per far girare la Lambda ogni minuto
+  LambdaScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: InvokeLambdaEveryMinute
+      ScheduleExpression: "rate(1 minute)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt primer.Arn
+          Id: "TargetLambda"
+
+  # Permesso necessario: EventBridge deve avere il permesso di chiamare la Lambda
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref primer
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt LambdaScheduleRule.Arn  
